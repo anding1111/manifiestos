@@ -537,8 +537,6 @@ export default {
   });
 };
 
-
-
   onMounted(() => {
     generateQRCodes();
   });
