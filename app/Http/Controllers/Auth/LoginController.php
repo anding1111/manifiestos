@@ -16,19 +16,24 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
+        // Validar credenciales
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
         ]);
 
-        if (Auth::attempt($credentials)) {
+        // Intentar iniciar sesión
+        if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
-            return redirect()->intended('home');
+
+            // Redirigir al dashboard o ruta predeterminada
+            return redirect()->intended('/home');
         }
 
+        // Retorna un error si las credenciales son incorrectas
         return back()->withErrors([
             'email' => 'Las credenciales proporcionadas no coinciden con nuestros registros.',
-        ]);
+        ])->withInput();
     }
 
     public function logout(Request $request)

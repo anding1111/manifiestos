@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
@@ -18,8 +20,33 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
+    // public function boot(): void
+    // {
+    //     Inertia::share('app.name', config('app.name'));
+    // }
+
+    public function boot()
     {
-        Inertia::share('app.name', config('app.name'));
+        Inertia::share([
+            // Nombre de la aplicación (puedes dejarlo como está)
+            'app' => [
+                'name' => config('app.name'),
+            ],
+    
+            // Compartir el usuario autenticado
+            'auth' => function () {
+                return [
+                    'user' => Auth::user(),
+                ];
+            },
+    
+            // Compartir errores de validación (automáticamente enviados por Laravel)
+            'errors' => function () {
+                return Session::get('errors')
+                    ? Session::get('errors')->getBag('default')->getMessages()
+                    : (object) [];
+            },
+        ]);
     }
+
 }

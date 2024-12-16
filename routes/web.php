@@ -6,6 +6,11 @@ use App\Http\Controllers\PDFController;
 use App\Http\Controllers\IMEIController;
 use Inertia\Inertia;
 
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+
+
 Route::get('/', function () {
     return Inertia::render('Home');
 })->name('home');
@@ -29,7 +34,6 @@ Route::get('/highlight', function () {
     return Inertia::render('Highlight');
 });
 
-
 // Ruta para servir archivos desde storage/app/public/uploads a través del enlace simbólico
 Route::get('/storage/uploads/{filename}', function ($filename) {
     $path = storage_path('app/public/uploads/' . $filename);
@@ -51,3 +55,27 @@ Route::get('/storage/highlight/{filename}', function ($filename) {
 
     return response()->file($path);
 });
+
+// Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+// Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+// Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
+// Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
+
+
+Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');
+Route::post('/login', [LoginController::class, 'login'])->middleware('guest');
+Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+// Rutas protegidas
+Route::middleware(['auth'])->group(function () {
+    Route::get('/home', function () {
+        return inertia('Home'); // Renderiza la página Home con Inertia.js
+    })->name('home');
+});
+
+Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request')->middleware('guest');
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email')->middleware('guest');
+
+Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset')->middleware('guest');
+Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update')->middleware('guest');
+

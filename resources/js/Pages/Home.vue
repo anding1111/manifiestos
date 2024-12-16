@@ -78,14 +78,23 @@
     </v-main>
     <!-- Botón flotante para imprimir/descargar PDF -->
     <v-btn v-if="results && Object.keys(results).length"
-      fab
-      bottom
-      right
-      color="grey-darken-4" 
-      @click="printAllResults"
-      class="floating-button"
+    fab
+    bottom
+    right
+    color="grey-darken-4" 
+    @click="printAllResults"
+    class="floating-button"
     >
     <v-icon size="x-large">mdi-printer</v-icon>
+    </v-btn>
+  
+  <!-- Botón Cierre de Sesión -->
+    <v-btn @click="logout"
+    top
+    left
+    color="grey-darken-4" 
+    >
+      Cerrar sesión
     </v-btn>
 
     <!-- Navegación inferior con botones para ir a la página de consulta y la de subida de archivos -->
@@ -551,6 +560,19 @@ export default {
         case 1: return 'light-blue-darken-4'
         default: return 'deep-purple-accent-4'
       }
+    },
+    isAuthenticated() {
+      return this.$page.props.auth.user !== null; // Verifica si el usuario está autenticado
+    },
+  },
+  mounted() {
+    if (!this.isAuthenticated && this.$page.component !== 'Auth/Login') {
+      Inertia.visit('/login'); // Redirige al login si no está autenticado
+    }
+  },
+  methods: {
+    logout() {
+      Inertia.post('/logout');
     },
   },
   icons: {
