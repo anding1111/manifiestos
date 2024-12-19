@@ -56,11 +56,6 @@ Route::get('/storage/highlight/{filename}', function ($filename) {
     return response()->file($path);
 });
 
-// Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-// Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
-// Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
-// Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
-
 
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');
 Route::post('/login', [LoginController::class, 'login'])->middleware('guest');
@@ -72,6 +67,14 @@ Route::middleware(['auth'])->group(function () {
         return inertia('Home'); // Renderiza la página Home con Inertia.js
     })->name('home');
 });
+
+// Route::middleware(['auth'])->group(function () {
+//     Route::get('/home', function () {
+//         dd(session('flash')); // Verifica si el mensaje flash está presente
+//         return inertia('Home');
+//     })->name('home');
+// });
+
 
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request')->middleware('guest');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email')->middleware('guest');

@@ -26,13 +26,19 @@ class LoginController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            // Redirigir al dashboard o ruta predeterminada
-            return redirect()->intended('/home');
-        }
+            // Establece un mensaje flash para el inicio de sesión exitoso
+            session()->flash('flash', [
+                'message' => '¡Inicio de sesión exitoso!',
+                'status' => 'success',
+            ]);
 
-        // Retorna un error si las credenciales son incorrectas
-        return back()->withErrors([
-            'email' => 'Las credenciales proporcionadas no coinciden con nuestros registros.',
+            // Retorna a la página de inicio de sesión con Inertia (para que los mensajes flash funcionen)
+            return inertia('Auth/Login');
+        }
+        // Configurar mensaje flash para error
+        return back()->with('flash', [
+            'message' => 'Las credenciales proporcionadas no coinciden con nuestros registros.',
+            'status' => 'error',
         ])->withInput();
     }
 
@@ -42,6 +48,6 @@ class LoginController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect('/home');
     }
 }

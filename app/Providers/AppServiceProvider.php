@@ -39,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
                     'user' => Auth::user(),
                 ];
             },
+            'flash' => function () {
+                return session()->get('flash');
+            },
     
             // Compartir errores de validación (automáticamente enviados por Laravel)
             'errors' => function () {

@@ -22,12 +22,11 @@
                       ref="loginForm"
                       v-model="isLoginFormValid"
                       @submit.prevent="login"
-                      lazy-validation
                     >
+                    <!-- :error-messages="$page.props.errors.email" -->
                       <v-text-field
                         v-model="email"
                         label="Correo electrónico"
-                        :error-messages="$page.props.errors.email"
                         :prepend-inner-icon="'mdi-email'"
                         :rules="emailRules"
                         variant="outlined"
@@ -36,12 +35,11 @@
                         validate-on-blur
                         required
                       ></v-text-field>
-
+                      <!-- :error-messages="$page.props.errors.password" -->
                       <v-text-field
                         v-model="password"
                         :type="showPassword ? 'text' : 'password'"
                         label="Contraseña"
-                        :error-messages="$page.props.errors.password"
                         :prepend-inner-icon="'mdi-lock'"
                         :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
                         @click:append-inner="showPassword = !showPassword"
@@ -75,6 +73,7 @@
                         color="primary"
                         class="submit-button"
                         :loading="loading"
+                        :disabled="!isLoginFormValid"
                         type="submit"
                       >
                         Iniciar sesión
@@ -93,7 +92,6 @@
                       ref="resetForm"
                       v-model="isResetFormValid"
                       @submit.prevent="resetPassword"
-                      lazy-validation
                     >
                       <v-text-field
                         v-model="resetEmail"
@@ -112,6 +110,7 @@
                         color="primary"
                         class="submit-button"
                         :loading="resetLoading"
+                        :disabled="!isResetFormValid"
                         type="submit"
                       >
                         Enviar instrucciones
@@ -132,31 +131,13 @@
 </template>
 
 <script>
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, nextTick, onMounted, watch } from 'vue';
 import { Inertia } from '@inertiajs/inertia';
 import { usePage } from '@inertiajs/inertia-vue3';
 import '@mdi/font/css/materialdesignicons.css'; // Asegurarse de usar css-loader
-import { createVuetify } from 'vuetify';
-import { h, provide } from 'vue';
-
-const localVuetify = createVuetify({
-  theme: {
-    themes: {
-      light: {
-        colors: {
-          primary: '#6C4BEB',
-          secondary: '#F07D30',
-        },
-      },
-    },
-  },
-});
 
 export default {
   name: "Login",
-  setup() {
-    provide('vuetify', localVuetify.framework);
-  },
   data() {
     return {
       email: '',
@@ -180,58 +161,97 @@ export default {
       snackbar: { show: false, text: '', color: 'success' },
     };
   },
+  watch: {
+    '$page.props.flash': {
+        handler(newFlash) {
+          if (newFlash?.message) {
+            const color = newFlash.status === 'error' ? 'error' : 'success';
+            this.showSnackbar(newFlash.message, color);
+
+            // Manejar redirección en caso de éxito
+            if (newFlash.status === 'success') {
+                setTimeout(() => {
+                    this.$inertia.visit('/home');
+                }, 1000);
+            }
+          }
+        },
+        immediate: true, // Asegura que se ejecuta al cargar la página
+    },
+    email(newVal) {
+      this.validateField('email');
+    },
+    password(newVal) {
+      this.validateField('password');
+    },
+    resetEmail(newVal) {
+    this.validateResetEmail();
+    },
+  },
   methods: {
+    validateResetEmail() {
+      this.isResetFormValid = this.emailRules.every(rule => rule(this.resetEmail) === true);
+    },
+    validateField(field) {
+      if (field === 'email') {
+        const valid = this.emailRules.every(rule => rule(this.email) === true);
+        this.isLoginFormValid = valid && this.passwordRules.every(rule => rule(this.password) === true);
+      } else if (field === 'password') {
+        const valid = this.passwordRules.every(rule => rule(this.password) === true);
+        this.isLoginFormValid = valid && this.emailRules.every(rule => rule(this.email) === true);
+      }
+    },
     async login() {
-      if (this.$refs.loginForm.validate()) {
+      if (this.isLoginFormValid) {
         this.loading = true;
         try {
-          // Realiza la solicitud a Laravel usando Inertia.js
           await this.$inertia.post('/login', {
             email: this.email,
             password: this.password,
             remember: this.remember,
           });
-
-          this.showSnackbar('¡Inicio de sesión exitoso!', 'success');
         } catch (error) {
           console.error('Error de inicio de sesión:', error);
-          this.showSnackbar(
-            'Error al iniciar sesión. Por favor, verifica tus credenciales.',
-            'error'
-          );
         } finally {
-          this.loading = false;
+          setTimeout(() => (this.loading = false), 1000)
+          // this.loading = false;
         }
       }
     },
     async resetPassword() {
-      if (this.$refs.resetForm.validate()) {
+      if (this.isResetFormValid) {
         this.resetLoading = true;
         try {
-          // Realiza la solicitud de recuperación de contraseña a Laravel
-          await this.$inertia.post('/forgot-password', {
-            email: this.resetEmail,
-          });
+          // Limpiar errores previos
+          this.$page.props.errors = {};
 
-          this.showSnackbar('¡Instrucciones enviadas a tu correo!', 'success');
-          this.resetEmail = '';
-          this.showResetForm = false;
+          // Realiza la solicitud de recuperación de contraseña
+          await this.$inertia.post('/forgot-password', { email: this.resetEmail });
+
+          // Mostrar éxito solo si no hay errores
+          if (Object.keys(this.$page.props.errors).length === 0) {
+            this.showSnackbar('¡Instrucciones enviadas a tu correo!', 'success');
+            this.resetEmail = '';
+            this.showResetForm = false;
+          }
         } catch (error) {
           console.error('Error al restablecer contraseña:', error);
-          this.showSnackbar(
-            'No se pudo enviar el correo. Por favor, inténtalo nuevamente.',
-            'error'
-          );
         } finally {
-          this.resetLoading = false;
+          setTimeout(() => (this.resetLoading = false), 1000)
+          // this.resetLoading = false;
         }
       }
     },
     showSnackbar(text, color = 'success') {
-      this.snackbar.text = text;
-      this.snackbar.color = color;
-      this.snackbar.show = true;
+        this.snackbar.text = text;
+        this.snackbar.color = color;
+        this.snackbar.show = true;
+
+        console.log('Snackbar shown:', this.snackbar); // Depuración
     },
+  },
+  mounted() {
+    console.log('Flash message on mount:', this.$page.props);
   },
 };
 
