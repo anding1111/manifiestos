@@ -24,6 +24,20 @@ class LoginController extends Controller
 
         // Intentar iniciar sesión
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            $user = Auth::user();
+
+            // Verificar si el usuario está activo (status = 1)
+            if ($user->status !== 1) {
+                Auth::logout(); // Cierra sesión si el usuario no está activo
+    
+                // Configurar mensaje flash para cuenta inactiva o eliminada
+                return back()->with('flash', [
+                    'message' => 'Tu cuenta está inactiva o ha sido eliminada.',
+                    'status' => 'error',
+                ])->withInput();
+            }
+            
+            // Regenerar sesión para proteger contra fijación de sesión
             $request->session()->regenerate();
 
             // Establece un mensaje flash para el inicio de sesión exitoso

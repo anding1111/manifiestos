@@ -10,6 +10,9 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ProfileController;
+
 
 Route::get('/', function () {
     return Inertia::render('Home');
@@ -18,6 +21,10 @@ Route::get('/', function () {
 Route::get('/upload', function () {
     return Inertia::render('UploadPDF');
 })->name('upload');
+
+// Route::get('/users', function () {
+//     return Inertia::render('User');
+// })->name('users');
 
 Route::post('/upload-pdf', [PDFController::class, 'upload']);
 Route::post('/check-imei', [IMEIController::class, 'checkImei']);
@@ -66,15 +73,18 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/home', function () {
         return inertia('Home'); // Renderiza la página Home con Inertia.js
     })->name('home');
+
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+     // Actualizar perfil
+     Route::put('/profile', [ProfileController::class, 'updateProfile'])->name('profile.update');
+
+     // Cambiar contraseña
+     Route::put('/change-password', [ProfileController::class, 'changePassword'])->name('password.change');
 });
-
-// Route::middleware(['auth'])->group(function () {
-//     Route::get('/home', function () {
-//         dd(session('flash')); // Verifica si el mensaje flash está presente
-//         return inertia('Home');
-//     })->name('home');
-// });
-
 
 Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request')->middleware('guest');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email')->middleware('guest');
@@ -82,3 +92,8 @@ Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink
 Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset')->middleware('guest');
 Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update')->middleware('guest');
 
+
+// Route::get('/users', [UserController::class, 'index'])->name('users.index');
+// Route::post('/users', [UserController::class, 'store'])->name('users.store');
+// Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+// Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
