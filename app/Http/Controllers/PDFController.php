@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Imei;
+use Inertia\Inertia;
 use Smalot\PdfParser\Parser as PdfParser;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class PDFController extends Controller
 {
@@ -63,6 +65,28 @@ class PDFController extends Controller
         }
     
         return back()->with('message', 'Archivo subido y procesado exitosamente.');
+    }
+    public function index()
+    {
+        if (!auth()->check()) {
+            Log::warning('Intento de acceso sin autenticación');
+            return redirect('/login'); // Redirige al login si no está autenticado
+        }
+        /**
+         * @var \App\Models\User $user
+         */
+        // Recuperar el usuario autenticado
+        $user = auth()->user();
+        if ($user) {
+            Log::info('Usuario autenticado:', $user->toArray());
+        } else {
+            Log::info('No hay usuario autenticado.');
+        }
+
+        // Renderizar la vista Home y pasar los datos del usuario
+        return Inertia::render('Upload', [
+            'loggedInUser' => $user,
+        ]);
     }
     
     private function extractTextFromPDF($filePath)

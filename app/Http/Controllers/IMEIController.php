@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\Imei;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 
 class IMEIController extends Controller
 {
@@ -51,6 +52,32 @@ class IMEIController extends Controller
             }
         }
 
-        return Inertia::render('Home', ['results' => $results]);
+        return Inertia::render('Home', [
+            'results' => $results,
+            'loggedInUser' => auth()->user(), // Enviar el usuario autenticado
+        ]);
+    }
+
+    public function index()
+    {
+        if (!auth()->check()) {
+            Log::warning('Intento de acceso sin autenticación');
+            return redirect('/login'); // Redirige al login si no está autenticado
+        }
+        /**
+         * @var \App\Models\User $user
+         */
+        // Recuperar el usuario autenticado
+        $user = auth()->user();
+        if ($user) {
+            // Log::info('Usuario autenticado:', $user->toArray());
+        } else {
+            Log::info('No hay usuario autenticado.');
+        }
+
+        // Renderizar la vista Home y pasar los datos del usuario
+        return Inertia::render('Home', [
+            'loggedInUser' => $user,
+        ]);
     }
 }

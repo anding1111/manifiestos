@@ -52,6 +52,7 @@ class UserController extends Controller
             'email' => $request->status != 3 ? 'required|email|unique:users,email,' . $user->id : 'nullable',
             'role' => $request->status != 3 ? 'required|string|max:255' : 'nullable',
             'status' => 'required|int|in:1,2,3',
+            'password' => 'nullable|string|min:6', // Contraseña opcional en la edición
         ]);
     
         // Manejar soft delete
@@ -61,12 +62,21 @@ class UserController extends Controller
         }
     
         // Manejar actualización normal
-        $user->update([
+        // Construir los datos de actualización
+        $updateData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'role' => $validated['role'],
             'status' => $validated['status'], // Actualizar el estado si es necesario
-        ]);
+        ];
+
+        // Solo agregar la contraseña si está presente
+        if (!empty($validated['password'])) {
+            $updateData['password'] = Hash::make($validated['password']);
+        }
+
+        // Actualizar el usuario
+        $user->update($updateData);
     
         return back()->with('success', 'Usuario actualizado correctamente.');
     }

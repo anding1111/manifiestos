@@ -1,6 +1,40 @@
 <template>
   <v-app>
     <v-main>
+      <!-- Barra superior con opciones -->
+      <v-menu location="bottom" origin="top right" transition="slide-y-transition">
+        <template v-slot:activator="{ props }">
+          <v-btn
+            icon
+            variant="elevated"
+            size="large"
+            v-bind="props"
+            class="floating-user-btn"
+          >
+            <v-icon size="x-large">mdi-account-circle</v-icon>
+          </v-btn>
+        </template>
+        <v-list>
+          <v-list-item @click="openProfileModal" hover>
+            <v-list-item-title>
+              <v-icon start>mdi-account-edit</v-icon>
+              Perfil
+            </v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="openPasswordChangeModal" hover>
+            <v-list-item-title>
+              <v-icon start>mdi-lock-reset</v-icon>
+              Cambiar Contraseña
+            </v-list-item-title>
+          </v-list-item>
+          <v-list-item @click="logout" hover>
+            <v-list-item-title>
+              <v-icon start>mdi-logout</v-icon>
+              Cerrar Sesión
+            </v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-menu>
       <!-- Tarjeta de búsqueda -->
       <v-container :class="{'d-flex justify-center align-center': true, 'fill-height': !Object.keys(results).length}">
         <v-card class="pa-5" elevation="3" max-width="600">
@@ -75,6 +109,80 @@
           </v-col>
         </v-row>
       </v-container>
+
+      <!-- Modal Perfil -->
+      <v-dialog v-model="profileModal" max-width="500px">
+        <v-card>
+          <v-card-title>Editar Perfil</v-card-title>
+          <v-card-text>
+            <v-form ref="profileForm" @submit.prevent="saveProfile" v-model="profileFormValid">
+              <v-text-field
+                v-model="profileUser.name"
+                label="Nombre"
+                variant="outlined"
+                :rules="[v => !!v || 'El nombre es obligatorio']"
+                required
+              ></v-text-field>
+              <v-text-field
+                v-model="profileUser.email"
+                label="Correo Electrónico"
+                type="email"
+                variant="outlined"
+                :rules="[v => !!v || 'El correo electrónico es obligatorio']"
+                readonly
+                disabled
+              ></v-text-field>
+              <v-btn block color="primary" type="submit" :disabled="!profileFormValid">
+                Guardar Cambios
+              </v-btn>
+            </v-form>
+          </v-card-text>
+        </v-card>
+      </v-dialog>
+
+    <!-- Modal Cambio de Contraseña -->
+    <v-dialog v-model="passwordChangeModal" max-width="500px">
+      <v-card>
+        <v-card-title>Cambiar Contraseña</v-card-title>
+        <v-card-text>
+          <v-form ref="passwordForm" @submit.prevent="changePassword" v-model="passwordFormValid">
+            <v-text-field
+              v-model="passwordChange.currentPassword"
+              label="Contraseña Actual"
+              type="password"
+              variant="outlined"
+              :rules="[v => !!v || 'La contraseña actual es obligatoria']"
+              required
+            ></v-text-field>
+            <v-text-field
+              v-model="passwordChange.newPassword"
+              label="Nueva Contraseña"
+              type="password"
+              variant="outlined"
+              :rules="[
+                v => !!v || 'La nueva contraseña es obligatoria',
+                v => v.length >= 6 || 'La contraseña debe tener al menos 6 caracteres'
+              ]"
+              required
+            ></v-text-field>
+            <v-text-field
+              v-model="passwordChange.confirmPassword"
+              label="Confirmar Nueva Contraseña"
+              type="password"
+              variant="outlined"
+              :rules="[
+                v => !!v || 'Debe confirmar la nueva contraseña',
+                v => v === passwordChange.newPassword || 'Las contraseñas no coinciden'
+              ]"
+              required
+            ></v-text-field>
+            <v-btn block color="primary" type="submit" :disabled="!passwordFormValid">
+              Cambiar Contraseña
+            </v-btn>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
     </v-main>
     <!-- Botón flotante para imprimir/descargar PDF -->
     <v-btn v-if="results && Object.keys(results).length"
@@ -107,6 +215,10 @@
         <v-icon>mdi-file-upload</v-icon>
         <span>Archivos</span>
       </v-btn>
+      <v-btn text @click="navigateTo('users')">
+        <v-icon>mdi-account-group</v-icon>
+        <span>Usuarios</span>
+      </v-btn>
     </v-bottom-navigation>
   </v-app>
   
@@ -125,6 +237,9 @@ import html2pdf from 'html2pdf.js';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 export default {
+  props: {
+      loggedInUser: Object, // Usuario logeado desde el backend
+  },
   setup() {
     const { props } = usePage();
     const imeis = ref(''); // Variable reactiva para almacenar los IMEIs ingresados
@@ -552,12 +667,25 @@ export default {
 
     return { imeis, results, errors, submit, navigateTo, shareWhatsApp, shareEmail, highlightImei, formatDate, replaceEnterWithComma, cleanInput, printCard, printAllResults, loadingFile, successFile };
   },
-  data: () => ({ value: 0 }), // Inicializa el estado del botón de navegación
+  data: () => ({ 
+    value: 0,
+    profileModal: false,
+    passwordChangeModal: false,
+    profileFormValid: false, // Agregado para manejar la validación del formulario de perfil
+    passwordFormValid: false, // Agregado para manejar la validación del formulario de cambio de contraseña
+    profileUser: {},
+    passwordChange: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+    },
+  }), // Inicializa el estado del botón de navegación
   computed: {
     color () {
       switch (this.value) {
         case 0: return 'deep-purple-accent-4'
         case 1: return 'light-blue-darken-4'
+        case 2: return 'deep-purple-accent-4'
         default: return 'deep-purple-accent-4'
       }
     },
@@ -571,6 +699,58 @@ export default {
     }
   },
   methods: {
+    openProfileModal() {
+      console.log('Usuario logeado en el modal:', this.loggedInUser);
+      // Cargar datos del usuario logeado en el modal
+      if (this.loggedInUser) {
+        this.profileUser = {
+          name: this.loggedInUser.name,
+          email: this.loggedInUser.email, // El correo será de solo lectura
+        };
+      }
+      this.profileModal = true; // Abrir el modal
+    },
+    saveProfile() {
+      // Validar y enviar los datos actualizados
+      Inertia.post('/profile', {
+        _method:'PUT',
+        name: this.profileUser.name,
+      }, {
+        onSuccess: () => {
+          this.profileModal = false;
+          this.$emit('success', 'Perfil actualizado correctamente.');
+        },
+        onError: (error) => {
+          console.error('Error al actualizar perfil:', error);
+          alert('No se pudo actualizar el perfil. Intenta nuevamente.');
+        },
+      });
+    },
+    openPasswordChangeModal() {
+      this.passwordChangeModal = true;
+      this.passwordChange = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      };
+    },
+    changePassword() {
+      // Validar y enviar el cambio de contraseña
+      Inertia.post('/change-password', {
+        _method:"PUT",
+        current_password: this.passwordChange.currentPassword,
+        new_password: this.passwordChange.newPassword,
+      }, {
+        onSuccess: () => {
+          this.passwordChangeModal = false;
+          this.$emit('success', 'Contraseña actualizada correctamente.');
+        },
+        onError: (error) => {
+          console.error('Error al cambiar contraseña:', error);
+          alert('No se pudo cambiar la contraseña. Verifique su contraseña actual.');
+        },
+      });
+    },
     logout() {
       Inertia.post('/logout');
     },
@@ -657,13 +837,31 @@ export default {
     height: 50px; /* Reduce más el tamaño del QR en pantallas pequeñas */
   }
 }
+.floating-user-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  background-color: #674AEE !important;
+  color: #ffffff !important;
+}
+.floating-user-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+}
+.v-menu__content {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15) !important;
+}
 
-.nav-bar {
+/* .nav-bar {
   bottom: 4px !important;
   left: 20% !important;
   width: calc(60% + 0px) !important;
   border-radius: 20px;
   opacity: 0.9;
-}
+} */
 
 </style>

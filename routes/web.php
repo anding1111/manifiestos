@@ -14,13 +14,13 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 
 
-Route::get('/', function () {
-    return Inertia::render('Home');
-})->name('home');
+// Route::get('/', function () {
+//     return Inertia::render('Home');
+// })->name('home');
 
-Route::get('/upload', function () {
-    return Inertia::render('UploadPDF');
-})->name('upload');
+// Route::get('/upload', function () {
+//     return Inertia::render('UploadPDF');
+// })->name('upload');
 
 // Route::get('/users', function () {
 //     return Inertia::render('User');
@@ -70,9 +70,26 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // Rutas protegidas
 Route::middleware(['auth'])->group(function () {
+    Route::get('/', function () {
+        return Inertia::render('Home');
+    })->name('home');
+
     Route::get('/home', function () {
         return inertia('Home'); // Renderiza la página Home con Inertia.js
     })->name('home');
+
+    Route::get('/', [IMEIController::class, 'index'])->middleware('auth');
+    Route::get('/home', [IMEIController::class, 'index'])->middleware('auth');
+
+    // Route::get('/upload', function () {
+    //     return Inertia::render('UploadPDF');
+    // })->name('upload');
+
+    Route::get('/upload', function () {
+        return Inertia::render('UploadPDF', [
+            'loggedInUser' => auth()->user(), // Enviar el usuario autenticado
+        ]);
+    })->name('upload');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
@@ -91,9 +108,3 @@ Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink
 
 Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset')->middleware('guest');
 Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update')->middleware('guest');
-
-
-// Route::get('/users', [UserController::class, 'index'])->name('users.index');
-// Route::post('/users', [UserController::class, 'store'])->name('users.store');
-// Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-// Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
