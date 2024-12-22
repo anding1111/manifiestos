@@ -12,6 +12,32 @@ use Illuminate\Support\Facades\Log;
 
 class PDFController extends Controller
 {
+    public function index()
+    {
+        // Validar que el usuario esté autenticado
+        if (!auth()->check()) {
+            Log::warning('Intento de acceso sin autenticación');
+            return redirect('/login'); // Redirige al login si no está autenticado
+        }
+
+        /**
+         * @var \App\Models\User $user
+         */
+        // Recuperar el usuario autenticado
+        $user = auth()->user();
+
+        // Lógica de control de roles (opcional)
+        if (!in_array($user->role, ['Administrador', 'Trabajador'])) {
+            Log::warning('Acceso denegado: usuario no autorizado', ['user_id' => $user->id]);
+            return redirect('/')->with('error', 'No tienes permisos para acceder a esta sección.');
+        }
+
+        // Renderizar la vista con los datos del usuario autenticado
+        return Inertia::render('UploadPDF', [
+            'loggedInUser' => $user,
+        ]);
+    }
+
     public function upload(Request $request)
     {
         $request->validate([
@@ -65,28 +91,6 @@ class PDFController extends Controller
         }
     
         return back()->with('message', 'Archivo subido y procesado exitosamente.');
-    }
-    public function index()
-    {
-        if (!auth()->check()) {
-            Log::warning('Intento de acceso sin autenticación');
-            return redirect('/login'); // Redirige al login si no está autenticado
-        }
-        /**
-         * @var \App\Models\User $user
-         */
-        // Recuperar el usuario autenticado
-        $user = auth()->user();
-        if ($user) {
-            Log::info('Usuario autenticado:', $user->toArray());
-        } else {
-            Log::info('No hay usuario autenticado.');
-        }
-
-        // Renderizar la vista Home y pasar los datos del usuario
-        return Inertia::render('Upload', [
-            'loggedInUser' => $user,
-        ]);
     }
     
     private function extractTextFromPDF($filePath)

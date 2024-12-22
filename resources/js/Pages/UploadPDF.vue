@@ -167,27 +167,26 @@
       </v-card>
     </v-dialog>
     </v-main>
-    <v-bottom-navigation
-				v-model="value"
-				:bg-color="color"
-				mode="shift"
-        class="nav-bar"
-			>
-				<v-btn text @click="navigateTo('home')">
-					<v-icon>mdi-barcode-scan</v-icon>
-					<span>Consulta</span>
-				</v-btn>
-
-				<v-btn text @click="navigateTo('upload')">
-					<v-icon>mdi-file-upload</v-icon>
-					<span>Archivos</span>
-				</v-btn>
-
-        <v-btn text @click="navigateTo('users')">
-          <v-icon>mdi-account-group</v-icon>
-          <span>Usuarios</span>
-        </v-btn>
-			</v-bottom-navigation>
+    <!-- Navegación inferior con botones para ir a la página de consulta y la de subida de archivos -->
+    <v-bottom-navigation v-model="value" :bg-color="color" mode="shift" class="nav-bar">
+      <!-- Botón Home -->
+      <v-btn text @click="navigateTo('home')" v-if="loggedInUser.role === 'Administrador' || loggedInUser.role === 'Trabajador' || loggedInUser.role === 'Cliente'">
+        <v-icon>mdi-barcode-scan</v-icon>
+        <span>Consulta</span>
+      </v-btn>
+    
+      <!-- Botón Upload (solo Administrador y Trabajador) -->
+      <v-btn text @click="navigateTo('upload')" v-if="loggedInUser.role === 'Administrador' || loggedInUser.role === 'Trabajador'">
+        <v-icon>mdi-file-upload</v-icon>
+        <span>Archivos</span>
+      </v-btn>
+    
+      <!-- Botón Usuarios (solo Administrador) -->
+      <v-btn text @click="navigateTo('users')" v-if="loggedInUser.role === 'Administrador'">
+        <v-icon>mdi-account-group</v-icon>
+        <span>Usuarios</span>
+      </v-btn>
+    </v-bottom-navigation>
   </v-app>
 </template>
 
@@ -273,7 +272,6 @@ export default {
   },
   methods: {
     openProfileModal() {
-      console.log('Usuario logeado en el modal:', this.loggedInUser);
       // Cargar datos del usuario logeado en el modal
       if (this.loggedInUser) {
         this.profileUser = {

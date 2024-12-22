@@ -13,19 +13,6 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ProfileController;
 
-
-// Route::get('/', function () {
-//     return Inertia::render('Home');
-// })->name('home');
-
-// Route::get('/upload', function () {
-//     return Inertia::render('UploadPDF');
-// })->name('upload');
-
-// Route::get('/users', function () {
-//     return Inertia::render('User');
-// })->name('users');
-
 Route::post('/upload-pdf', [PDFController::class, 'upload']);
 Route::post('/check-imei', [IMEIController::class, 'checkImei']);
 Route::get('/check-imei', function () {
@@ -81,15 +68,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [IMEIController::class, 'index'])->middleware('auth');
     Route::get('/home', [IMEIController::class, 'index'])->middleware('auth');
 
-    // Route::get('/upload', function () {
-    //     return Inertia::render('UploadPDF');
-    // })->name('upload');
-
     Route::get('/upload', function () {
-        return Inertia::render('UploadPDF', [
-            'loggedInUser' => auth()->user(), // Enviar el usuario autenticado
-        ]);
+        return Inertia::render('UploadPDF');
     })->name('upload');
+
+    Route::get('/upload', [PDFController::class, 'index'])->middleware('auth');
+
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');

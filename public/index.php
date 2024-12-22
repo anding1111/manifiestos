@@ -15,3 +15,28 @@ require __DIR__.'/../vendor/autoload.php';
 // Bootstrap Laravel and handle the request...
 (require_once __DIR__.'/../bootstrap/app.php')
     ->handleRequest(Request::capture());
+
+// use Illuminate\Contracts\Http\Kernel;
+// use Illuminate\Http\Request;
+
+// define('LARAVEL_START', microtime(true));
+
+// // Verifica si la aplicación está en modo de mantenimiento
+// if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+//     require $maintenance;
+// }
+
+// // Registra el autoload de Composer
+// require __DIR__.'/../vendor/autoload.php';
+
+// // Arranca la aplicación
+// $app = require_once __DIR__.'/../bootstrap/app.php';
+
+// // Obtén el kernel y maneja la solicitud
+// $kernel = $app->make(Kernel::class);
+
+// $response = $kernel->handle(
+//     $request = Request::capture()
+// )->send();
+
+// $kernel->terminate($request, $response);

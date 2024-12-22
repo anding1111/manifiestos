@@ -51,6 +51,7 @@ class IMEIController extends Controller
                 ];
             }
         }
+        Log::warning('Intento de acceso sin autenticación');
 
         return Inertia::render('Home', [
             'results' => $results,
@@ -60,6 +61,7 @@ class IMEIController extends Controller
 
     public function index()
     {
+        // Validar que el usuario esté autenticado
         if (!auth()->check()) {
             Log::warning('Intento de acceso sin autenticación');
             return redirect('/login'); // Redirige al login si no está autenticado
@@ -69,10 +71,13 @@ class IMEIController extends Controller
          */
         // Recuperar el usuario autenticado
         $user = auth()->user();
-        if ($user) {
-            // Log::info('Usuario autenticado:', $user->toArray());
-        } else {
-            Log::info('No hay usuario autenticado.');
+        if (!in_array($user->role, ['Administrador', 'Trabajador', 'Cliente'])) {
+            Log::warning('Usuario sin permisos intentó acceder a Home', [
+                'id' => $user->id,
+                'role' => $user->role,
+            ]);
+
+            return redirect('/')->with('error', 'No tienes permiso para acceder a esta sección.');
         }
 
         // Renderizar la vista Home y pasar los datos del usuario
