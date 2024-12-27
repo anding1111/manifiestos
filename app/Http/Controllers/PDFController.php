@@ -2,16 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Imei;
-use Inertia\Inertia;
-use Smalot\PdfParser\Parser as PdfParser;
-use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use Inertia\Inertia;
+use Smalot\PdfParser\Parser as PdfParser;
+use App\Services\IMEIProcessingService;
+use App\Services\PDFTextExtractorService;
 
 class PDFController extends Controller
 {
+    private $imeiProcessor;
+    private $pdfExtractor;
+
+    public function __construct(
+        IMEIProcessingService $imeiProcessor,
+        PDFTextExtractorService $pdfExtractor
+    ) {
+        $this->imeiProcessor = $imeiProcessor;
+        $this->pdfExtractor = $pdfExtractor;
+    }
+
     public function index()
     {
         // Validar que el usuario esté autenticado
@@ -43,54 +56,47 @@ class PDFController extends Controller
         $request->validate([
             'file' => 'required|mimes:pdf|max:2048',
         ]);
-    
-        $file = $request->file('file');
-        $fileName = Carbon::now()->format('Ymd_His') . '_' . Str::upper(Str::random(3)) . '.pdf';
-        $filePath = $file->storeAs('public/uploads', $fileName); // Guardar en 'public/uploads'
-    
-        $pdfText = $this->extractTextFromPDF(storage_path('app/' . $filePath));
-    
-        // Preprocesar texto línea por línea para manejar IMEIs divididos y separadores
-        $lines = explode("\n", $pdfText); // Dividir el texto en líneas
-        $processedText = '';
-    
-        for ($i = 0; $i < count($lines); $i++) {
-            $currentLine = trim($lines[$i]); // Línea actual
-            $nextLine = isset($lines[$i + 1]) ? trim($lines[$i + 1]) : ''; // Línea siguiente (si existe)
-    
-            // Verificar si el final de la línea actual contiene parte de un IMEI
-            if (preg_match('/\d{1,14}$/', $currentLine, $matches)) {
-                // Si la siguiente línea empieza con números, unir ambas
-                if (preg_match('/^\d+/', $nextLine)) {
-                    $currentLine .= $nextLine; // Unir líneas
-                    $lines[$i + 1] = ''; // Vaciar la línea siguiente para evitar duplicados
-                }
-            }
-    
-            // Agregar la línea procesada al texto final
-            $processedText .= $currentLine . ' ';
+
+        try {
+            // Store file
+            $file = $request->file('file');
+            $fileName = $this->generateFileName();
+            $filePath = $file->storeAs('public/uploads', $fileName);
+
+            // Extract and process text
+            $pdfText = $this->pdfExtractor->extract(
+                storage_path('app/' . $filePath)
+            );
+            $foundImeis = $this->imeiProcessor->processText($pdfText);
+
+            // Save IMEIs
+            $this->saveImeis($fileName, $foundImeis);
+
+            return back()->with('message', 'Archivo procesado exitosamente. IMEIs encontrados: ' . count($foundImeis));
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al procesar el archivo: ' . $e->getMessage());
         }
-    
-        // Reemplazar separadores comunes por comas
-        $processedText = preg_replace("/[,\s\/\\\\]+/", ",", $processedText);
-    
-        // Patrón para encontrar números de 15 dígitos (IMEI)
-        $pattern = '/\b\d{15}\b/';
-        preg_match_all($pattern, $processedText, $matches);
-    
-        $foundImeis = $matches[0];
-    
-        // Guardar los IMEIs en la base de datos
-        foreach ($foundImeis as $imei) {
-            Imei::create([
+    }
+
+    private function generateFileName(): string
+    {
+        return Carbon::now()->format('Ymd_His') . '_' . 
+               Str::upper(Str::random(3)) . '.pdf';
+    }
+
+    private function saveImeis(string $fileName, array $imeis): void
+    {
+        $now = Carbon::now();
+        $records = array_map(function($imei) use ($fileName, $now) {
+            return [
                 'name_pdf' => $fileName,
                 'imei' => $imei,
-                'created_at' => Carbon::now(),
-                'updated_at' => Carbon::now(),
-            ]);
-        }
-    
-        return back()->with('message', 'Archivo subido y procesado exitosamente.');
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }, $imeis);
+
+        Imei::insert($records);
     }
     
     private function extractTextFromPDF($filePath)

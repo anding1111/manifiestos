@@ -453,8 +453,6 @@ export default {
                     const itemText = item.str.replace(/\n+/g, '');
                     if (accumulatedLength <= itemText.length) {
                       const precedingTextWidth = calculateTextWidth(itemText.substring(0, accumulatedLength), item.transform[0]);
-                      console.log(`Texto que precede: ${precedingTextWidth}`);
-
                       const x = item.transform[4] + precedingTextWidth;
                       const y = height - item.transform[5] + 1;
                       const matchWidth = calculateTextWidth(match[0], item.transform[0]);
@@ -471,7 +469,6 @@ export default {
                       hasHighlightedImeis = true;
                       // Páginas sin "Privada"
                       if (!pageText.includes("Privada") && hasHighlightedImeis) {
-                        console.log(`Página ${pageIndex} contiene IMEIs resaltados. Conservando.`);
                         hasImeisInCurrentSection = true; // La sección tiene IMEIs resaltados
                         pageIndicesToKeep.add(pageIndex);
                       }
@@ -488,26 +485,20 @@ export default {
         if (pageText.includes("Privada")) {
           // Evaluar la sección previa antes de iniciar una nueva
           if (currentSectionPages.length > 0) {
-            console.log(`Fin de sección en página ${pageIndex - 1}. Sección actual: ${currentSectionPages}`);
 
             // Si no hay IMEIs resaltados en la sección previa, eliminar las páginas
             if (!hasImeisInCurrentSection) {
-              console.log(`No se encontraron IMEIs resaltados en la sección. Eliminando páginas: ${currentSectionPages}`);
               currentSectionPages.forEach((privadaPage) => pageIndicesToKeep.delete(privadaPage));
-            } else {
-              console.log(`Se encontraron IMEIs resaltados en la sección. Páginas mantenidas: ${currentSectionPages}`);
-            }
+            } 
           }
           // Reiniciar evaluación para la nueva sección
           hasImeisInCurrentSection = false;
           currentSectionPages = [];
           // Procesar la nueva portada
           if (hasHighlightedImeis) {
-            console.log(`Página ${pageIndex} contiene "Privada" e IMEIs resaltados. Conservando.`);
             hasImeisInCurrentSection = true; // La sección tiene IMEIs resaltados
             pageIndicesToKeep.add(pageIndex); // Conservar la página
           } else {
-            console.log(`Página ${pageIndex} contiene "Privada". Marcando como posible portada.`);
             currentSectionPages.push(pageIndex); // Registrar como posible portada
             pageIndicesToKeep.add(pageIndex);
           }
@@ -516,14 +507,10 @@ export default {
       }
       // Evaluar la última sección al final del documento
       if (currentSectionPages.length > 0) {
-        console.log(`Fin de sección en página ${pdf.numPages - 1}. Sección actual: ${currentSectionPages}`);
 
         if (!hasImeisInCurrentSection) {
-          console.log(`No se encontraron IMEIs resaltados en la última sección. Eliminando páginas: ${currentSectionPages}`);
           currentSectionPages.forEach((privadaPage) => pageIndicesToKeep.delete(privadaPage));
-        } else {
-          console.log(`Se encontraron IMEIs resaltados en la última sección. Páginas mantenidas: ${currentSectionPages}`);
-        }
+        } 
       }
 
       // Crear un nuevo documento PDF que solo contenga las páginas seleccionadas
