@@ -12,6 +12,7 @@ class Imei extends Model
     protected $fillable = [
         'name_pdf',
         'imei',
+        'uuid',
         'created_at',
         'updated_at',
     ];

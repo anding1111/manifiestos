@@ -7,6 +7,10 @@ use App\Models\Imei;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
 
 class IMEIController extends Controller
 {
@@ -51,6 +55,7 @@ class IMEIController extends Controller
                 ];
             }
         }
+
         Log::warning('Intento de acceso sin autenticación');
 
         return Inertia::render('Home', [
@@ -66,9 +71,7 @@ class IMEIController extends Controller
             Log::warning('Intento de acceso sin autenticación');
             return redirect('/login'); // Redirige al login si no está autenticado
         }
-        /**
-         * @var \App\Models\User $user
-         */
+
         // Recuperar el usuario autenticado
         $user = auth()->user();
         if (!in_array($user->role, ['Administrador', 'Trabajador', 'Cliente'])) {
@@ -85,4 +88,57 @@ class IMEIController extends Controller
             'loggedInUser' => $user,
         ]);
     }
+
+    // Nuevo método para almacenar IMEIs y devolver un UUID
+    public function storeImeis(Request $request)
+    {
+        $request->validate([
+            'imeis' => 'required|array', // Validar que se envía un array de IMEIs
+        ]);
+
+        $uuid = Str::uuid()->toString(); // Generar un identificador único
+        Cache::put($uuid, json_encode($request->imeis), now()->addDays(30)); // Almacenar IMEIs por 30 días
+
+        return response()->json(['uuid' => $uuid]); // Retornar el UUID
+    }
+
+    // Nuevo método para resaltar IMEIs en un PDF
+    public function highlight(Request $request)
+    {
+        $uuid = $request->query('uuid'); // Obtener el UUID de la consulta
+        $imeis = Cache::get($uuid); // Recuperar los IMEIs almacenados
+
+        if (!$imeis) {
+            abort(404, 'IMEIs no encontrados o expirados'); // Retornar un error si no se encuentran
+        }
+
+        return Inertia::render('Highlight', [
+            'filename' => $request->query('filename'),
+            'imeis' => $imeis,
+        ]);
+    }
+
+    public function fetchImeis(Request $request)
+    {
+        $uuid = $request->query('uuid');
+        $filename = $request->query('filename');
+
+        if (!$uuid || !$filename) {
+            return redirect()->route('home')->with('error', 'UUID and filename are required');
+        }
+
+        // Recuperar los IMEIs desde la caché
+        $imeis = Cache::get($uuid);
+
+        if (!$imeis) {
+            return redirect()->route('home')->with('error', 'IMEIs not found or expired');
+        }
+
+        return Inertia::render('Highlight', [
+            'filename' => $filename,
+            'imeis' => json_decode($imeis, true), // Decodificar explícitamente como array
+        ]);
+        
+    }
+
 }

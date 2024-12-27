@@ -47,13 +47,18 @@ Route::get('/check-imei', function () {
     return redirect()->route('home');
 });
 
-Route::get('/highlight/{filename}/{imeis}', function ($filename, $imeis) {
-    return Inertia::render('Highlight', ['filename' => $filename, 'imeis' => $imeis]);
-})->name('highlight');
-Route::get('/highlight', function () {
-    return Inertia::render('Highlight');
-});
+// Route::get('/highlight/{filename}/{imeis}', function ($filename, $imeis) {
+//     return Inertia::render('Highlight', ['filename' => $filename, 'imeis' => $imeis]);
+// })->name('highlight');
+// Route::get('/highlight', function () {
+//     return Inertia::render('Highlight');
+// });
+// Rutas públicas para el resaltado de IMEIs
+Route::post('/store-imeis', [IMEIController::class, 'storeImeis'])->name('store-imeis');
+Route::get('/fetch-imeis', [IMEIController::class, 'fetchImeis'])->name('fetch-imeis');
+Route::get('/highlight', [IMEIController::class, 'highlight'])->name('highlight');
 
+// Ruta pública para servir archivos
 Route::get('/storage/uploads/{filename}', function ($filename) {
     $path = storage_path('app/public/uploads/' . $filename);
     if (!file_exists($path)) {

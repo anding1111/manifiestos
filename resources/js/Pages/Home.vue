@@ -69,12 +69,26 @@
             lg="3"
           >
             <v-card :class="{'not-found': fileName === 'N/A'}" class="mb-4 result-card" :data-card="fileName">
-              <v-card-title class="headline">Archivo: {{ fileName }}</v-card-title>
+              <!-- <v-card-title class="headline">Archivo: {{ fileName }}</v-card-title> -->
               <v-card-text>
-                <div v-if="fileResults.length">
-                  <strong>IMEIs:</strong> {{ fileResults.map(result => result.imei).join(', ') }}
-                </div>
-                <v-btn
+                <div class="justify-print">
+                  <div v-if="fileName !== 'N/A'" class="observations">
+                    <span class="observation">Escanee para descargar sus manifiestos resaltados</span>
+                  </div>
+                  <div v-if="fileName !== 'N/A'" class="qr-code-container small-qr">
+                    <canvas :id="`qrcode-${fileName}`"></canvas>
+                    <v-btn icon @click="printCard(fileName)" class="print-btn action-btn">
+                      <v-icon size="x-large">mdi-printer</v-icon>
+                    </v-btn>
+                  </div>
+                  <div v-if="fileResults.length">
+                    <span class="imei-result">
+                      IMEIs: 
+                      {{ fileResults.slice(0, 4).map(result => result.imei).join(', ') }}
+                      <span v-if="fileResults.length > 3">...</span>
+                    </span>
+                  </div>
+                  <v-btn
                   v-if="fileName !== 'N/A'"
                   @click="highlightImei(fileResults)"
                   :color="loadingFile === fileName ? 'primary' : successFile === fileName ? 'green' : 'orange-accent-4'"
@@ -90,19 +104,8 @@
                     color="white"
                     class="mr-2"
                   ></v-progress-circular>
-                  {{ loadingFile === fileName ? 'Procesando...' : successFile === fileName ? '¡Completado!' : 'Resaltar IMEIs y Descargar PDF' }}
+                  {{ loadingFile === fileName ? 'Procesando...' : successFile === fileName ? '¡Completado!' : 'Resaltar y Descargar PDF' }}
                 </v-btn>
-  
-                <div class="justify-print">
-                  <div v-if="fileName !== 'N/A'" class="qr-code-container small-qr">
-                    <canvas :id="`qrcode-${fileName}`"></canvas>
-                    <v-btn icon @click="printCard(fileName)" class="print-btn action-btn">
-                      <v-icon size="x-large">mdi-printer</v-icon>
-                    </v-btn>
-                  </div>
-                  <div v-if="fileName !== 'N/A'" class="observations">
-                    <span class="observation">Escanee para descargar sus manifiestos resaltados</span>
-                  </div>
                 </div>
               </v-card-text>
             </v-card>
@@ -379,7 +382,6 @@ export default {
                 hasHighlightedImeis = true;
                 // Páginas sin "Privada"
                 if (!pageText.includes("Privada") && hasHighlightedImeis) {
-                  console.log(`Página ${pageIndex} contiene IMEIs resaltados. Conservando.`);
                   hasImeisInCurrentSection = true; // La sección tiene IMEIs resaltados
                   pageIndicesToKeep.add(pageIndex);
                 }
@@ -571,21 +573,35 @@ export default {
         light:"#FDFDFDFF"
       }
     }
+    // Nueva función para generar códigos QR
+    const generateQRCodes = async () => {
+      try {
+        // Agrupar los IMEIs por archivo
+        const groupedImeis = Object.entries(results.value).reduce((acc, [fileName, imeis]) => {
+          if (fileName !== 'N/A') {
+            acc[fileName] = imeis.map((imei) => imei.imei);
+          }
+          return acc;
+        }, {});
 
-    // Función para generar códigos QR
-    const generateQRCodes = () => {
-      Object.keys(results.value).forEach(fileName => {
-        if (fileName !== 'N/A') {
+        // Iterar por cada archivo y generar un UUID para los IMEIs
+        for (const [fileName, imeis] of Object.entries(groupedImeis)) {
+          const response = await axios.post('/store-imeis', { imeis });
+          const uuid = response.data.uuid;
+
           const canvas = document.getElementById(`qrcode-${fileName}`);
           if (canvas) {
-            const url = `${window.location.origin}/highlight?filename=${fileName}&imeis=${results.value[fileName].map(result => result.imei).join(',')}`;
+            const url = `${window.location.origin}/highlight?filename=${fileName}&uuid=${uuid}`;
             QRCode.toCanvas(canvas, url, optsQR, (error) => {
               if (error) console.error(error);
             });
           }
         }
-      });
+      } catch (error) {
+        console.error('Error al generar los códigos QR:', error);
+      }
     };
+
     // Configuración archivo PDF QRs
     var opt = {
       margin:       1,
@@ -768,7 +784,7 @@ export default {
 .qr-code-container {
   display: flex;
   justify-content: center;
-  margin-top: 16px;
+  margin-top: 0;
   position: relative;
 }
 .print-btn {
@@ -786,6 +802,15 @@ export default {
   width: 160px;
   text-align: center;
 }
+
+.imei-result {
+  display: block;
+  white-space: pre-wrap;
+  /* word-break: break-all; */
+  text-align: center;
+  font-size: xx-small;
+}
+
 .action-btn {
   display: inline-block;
 }
