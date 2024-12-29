@@ -239,7 +239,7 @@ import { Inertia } from '@inertiajs/inertia';
 import { usePage } from '@inertiajs/inertia-vue3';
 import '@mdi/font/css/materialdesignicons.css'; // Asegurarse de usar css-loader
 import moment from 'moment-timezone';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import QRCode from 'qrcode';
 import html2pdf from 'html2pdf.js';
@@ -638,37 +638,178 @@ export default {
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
  
-  // Función para imprimir todas las tarjetas y QRs
+  // Nueva función para generar un PDF personalizado con pdf-lib
   const printAllResults = async () => {
-    const resultsContainer = document.querySelector('.results-container'); // Selecciona el contenedor de los resultados
-    if (!resultsContainer) {
-    console.error("No se encontró el contenedor de resultados.");
-    return;
-  }
+    try {
+      const pdfDoc = await PDFDocument.create();
+      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-  const allCards = resultsContainer.querySelectorAll('.result-card'); // Selecciona todas las tarjetas de resultados
-  if (!allCards.length) {
-    console.error("No se encontraron tarjetas de resultados.");
-    return;
-  }
+      const pageWidth = 595.28;
+      const pageHeight = 841.89;
+      const margin = 50;
+      const qrSize = 120;
+      const cardPadding = 15;
+      const cardsPerRow = 3; // Reducido para tarjetas más grandes
+      const cardsPerPage = 9; // Ajustado para el nuevo layout
 
-  // Añade la clase 'print-mode' para ocultar botones antes de la impresión
-  allCards.forEach(card => {
-    card.classList.add('print-mode');
-  });
+      const headerHeight = 60;
+      const footerHeight = 40;
+      const cardWidth = (pageWidth - margin * 2 - cardPadding * (cardsPerRow - 1)) / cardsPerRow;
+      const cardHeight = 200; // Altura fija para las tarjetas
 
-  try {
-    // Genera un archivo PDF con todas las tarjetas
-    await html2pdf().set(optAll).from(resultsContainer).save();
-  } catch (error) {
-    console.error("Error generando el PDF:", error);
-  }
+      let currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+      let x = margin;
+      let y = pageHeight - margin - headerHeight;
 
-  // Remueve la clase 'print-mode' después de la impresión
-  allCards.forEach(card => {
-    card.classList.remove('print-mode');
-  });
-};
+      // Función para agregar header con diseño
+      const addHeader = (page, title) => {
+        page.drawRectangle({
+          x: 0,
+          y: pageHeight - 80,
+          width: pageWidth,
+          height: 80,
+          color: rgb(0.4, 0.2, 0.8),
+        });
+        page.drawText(title, {
+          x: margin,
+          y: pageHeight - 50,
+          size: 24,
+          font: helveticaBold,
+          color: rgb(1, 1, 1),
+        });
+      };
+
+      // Función para agregar footer
+      const addFooter = (page, pageNumber, totalPages) => {
+        page.drawLine({
+          start: { x: margin, y: margin + 30 },
+          end: { x: pageWidth - margin, y: margin + 30 },
+          thickness: 1,
+          color: rgb(0.8, 0.8, 0.8),
+        });
+        page.drawText(`Página ${pageNumber} de ${totalPages}`, {
+          x: pageWidth - margin - 100,
+          y: margin + 10,
+          size: 10,
+          font: helveticaFont,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+      };
+
+      addHeader(currentPage, 'TEINNOVA MAYORISTA  - Reporte de IMEIs');
+
+      let cardCount = 0;
+      const totalResults = Object.entries(results.value).filter(([key]) => key !== 'N/A').length;
+      const totalPages = Math.ceil(totalResults / cardsPerPage);
+      console.log('Total de resultados:', totalResults);
+      console.log('Total de páginas:', totalPages);
+      let currentPageNumber = 1;
+
+      for (const [fileKey, fileResults] of Object.entries(results.value)) {
+        if (fileKey === 'N/A') continue;
+
+        // Inicializar `originalFileName` correctamente
+        const originalFileName = fileKey;
+        // const truncatedFileName = originalFileName.length > 20 ? `${originalFileName.substring(0, 17)}...` : originalFileName;
+
+        // Obtener QR del canvas
+        const canvas = document.getElementById(`qrcode-${originalFileName}`);
+        if (canvas) {
+          const qrImage = canvas.toDataURL('image/png').split(',')[1];
+          const qrImageBytes = Uint8Array.from(atob(qrImage), (c) => c.charCodeAt(0));
+          const qrImageEmbed = await pdfDoc.embedPng(qrImageBytes);
+
+          currentPage.drawImage(qrImageEmbed, {
+            x: x + (cardWidth - qrSize + 40) / 2, // Posición horizontal centrada
+            y: y - qrSize - 20, // Posición vertical
+            width: qrSize,
+            height: qrSize,
+          });
+        }
+
+        // currentPage.drawText(truncatedFileName, {
+        //   x: x + 10,
+        //   y: y - cardHeight + 160,
+        //   size: 12,
+        //   font: helveticaBold,
+        //   color: rgb(0.2, 0.2, 0.2),
+        // });
+
+        const imeisToShow = fileResults
+          .slice(0, 3)
+          .map((result) => result.imei)
+          .join('\n');
+
+          currentPage.drawText('IMEIs:', {
+            x: x - 16, // Margen desde la izquierda
+            y: y - cardHeight + 130, // Posición vertical relativa a la tarjeta, Posición vertical del título "IMEIs:"
+            size: 7, // Tamaño de la fuente
+            font: helveticaBold, // Fuente
+            color: rgb(0.4, 0.4, 0.4), // Color
+          });
+
+          currentPage.drawText(imeisToShow, {
+            x: x - 16, // Margen izquierdo
+            y: y - cardHeight + 115, // Posición vertical
+            size: 7, // Tamaño de la fuente
+            lineHeight: 10, // Espaciado entre líneas
+            font: helveticaFont,
+            color: rgb(0.3, 0.3, 0.3),
+          });
+
+        if (fileResults.length > 3) {
+          currentPage.drawText(`... y ${fileResults.length - 3} más`, {
+            x: x - 16,
+            y: y - cardHeight + 84,
+            size: 7,
+            lineHeight: 10, // Espaciado entre líneas
+            font: helveticaFont,
+            color: rgb(0.5, 0.5, 0.5),
+          });
+        }
+
+        x += cardWidth + cardPadding;
+        cardCount++;
+
+        if (cardCount % cardsPerRow === 0) {
+          x = margin;
+          y -= cardHeight + cardPadding;
+        }
+
+        if (cardCount % cardsPerPage === 0 && cardCount < totalResults) {
+          // Solo crea una nueva página si aún quedan tarjetas por procesar
+          addFooter(currentPage, currentPageNumber, totalPages);
+          currentPage = pdfDoc.addPage([pageWidth, pageHeight]);
+          currentPageNumber++;
+          addHeader(currentPage, 'TEINNOVA MAYORISTAS - Reporte de IMEIs');
+          x = margin;
+          y = pageHeight - margin - headerHeight;
+        }
+
+        // Al final, verifica si la última página no está vacía
+        if (cardCount % cardsPerPage !== 0) {
+          addFooter(currentPage, currentPageNumber, totalPages);
+        }
+
+      }
+
+      // addFooter(currentPage, currentPageNumber, totalPages);
+
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const link = document.createElement('a');
+      //Fecha y hora para el nombre del archivo GTM-5
+      const datetime = moment().tz('America/Bogota').format('YYYYMMDD_HHmmss');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Reporte_IMEIs_${datetime}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error al generar el PDF personalizado:', error);
+    }
+  };
 
   onMounted(() => {
     generateQRCodes();
