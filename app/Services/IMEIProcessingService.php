@@ -19,6 +19,7 @@ class IMEIProcessingService
 
         foreach ($lines as $lineNumber => $line) {
             $line = $this->cleanLine($line);
+            Log::info('Processing line', ['line' => $line]);
 
             // Manejar el buffer con el inicio de la línea actual
             if ($buffer) {
@@ -54,11 +55,58 @@ class IMEIProcessingService
     /**
      * Limpia y normaliza una línea.
      */
+    // private function cleanLine(string $line): string
+    // {
+    //     Log::info('Cleaning line', ['line' => $line]);
+    //     $line = trim($line);
+    //     return preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', $line);
+    // }
+
     private function cleanLine(string $line): string
     {
+        Log::info('Cleaning line', ['line' => $line]);
+
+        // Convertir NBSP (\xC2\xA0) a un espacio regular
+        $line = str_replace("\xC2\xA0", ' ', $line);
+
+        // Limpieza básica
         $line = trim($line);
+
+        // Eliminación de otros caracteres no deseados
         return preg_replace('/[\x00-\x1F\x7F-\xFF]/', '', $line);
     }
+
+    /**
+     * Codifica caracteres especiales en formato legible.
+     */
+    private function encodeSpecialCharacters(string $line): string
+    {
+        $output = '';
+        foreach (str_split($line) as $char) {
+            $ord = ord($char);
+            if ($ord < 32 || $ord > 126) {
+                // Caracteres no imprimibles o extendidos
+                $output .= sprintf('\\x%02X', $ord); // Formato hexadecimal
+            } else {
+                // Caracteres imprimibles
+                $output .= $char;
+            }
+        }
+        return $output;
+    }
+    
+    private function logCharacterDetails(string $line): void
+    {
+        foreach (str_split($line) as $char) {
+            $ord = ord($char);
+            Log::info('Character details', [
+                'character' => $char,
+                'ascii' => $ord,
+                'hex' => sprintf('0x%02X', $ord),
+            ]);
+        }
+    }
+    
 
     /**
      * Combina el buffer con el inicio de la línea actual.

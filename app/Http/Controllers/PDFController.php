@@ -87,17 +87,30 @@ class PDFController extends Controller
     private function saveImeis(string $fileName, array $imeis): void
     {
         $now = Carbon::now();
-        $records = array_map(function($imei) use ($fileName, $now) {
-            return [
-                'name_pdf' => $fileName,
-                'imei' => $imei,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-        }, $imeis);
+        $batchSize = 1000; // Tamaño del lote para los inserts
+        $batches = array_chunk($imeis, $batchSize); // Divide los IMEIs en lotes
 
-        Imei::insert($records);
+        foreach ($batches as $batch) {
+            $records = array_map(function($imei) use ($fileName, $now) {
+                return [
+                    'name_pdf' => $fileName,
+                    'imei' => $imei,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }, $batch);
+
+            try {
+                Imei::insert($records); // Inserta el lote en la base de datos
+            } catch (\Exception $e) {
+                Log::error('Error al insertar IMEIs en lote', [
+                    'error' => $e->getMessage(),
+                    'batch' => $batch,
+                ]);
+            }
+        }
     }
+
     
     private function extractTextFromPDF($filePath)
     {
